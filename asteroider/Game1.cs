@@ -24,7 +24,10 @@ namespace asteroider
         Texture2D meteorMediumTexture;
         Texture2D meteorSmallTexture;
         Random random = new Random();
-
+        int lives = 3;
+        bool invulnerable = false;
+        float invulnerableTimer = 0f;
+        const float InvulnerableTime = 2f;
         SoundEffect laserSound;
         SoundEffect explosionSound;
         Texture2D explosionTexture;
@@ -88,6 +91,16 @@ namespace asteroider
 
         protected override void Update(GameTime gameTime)
         {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (invulnerable)
+            {
+                invulnerableTimer -= dt;
+                if (invulnerableTimer <= 0f)
+                    invulnerable = false;
+            }
+
+
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
@@ -134,6 +147,37 @@ namespace asteroider
             foreach (Meteor metor in meteors)
                 metor.Update(gameTime);
 
+            if (!invulnerable)
+            {
+                Meteor meteor1 = meteors.FirstOrDefault(m => m.CollidesWith(player));
+                if (meteor1 != null)
+                {
+                    lives--;
+
+                    meteors.Remove(meteor1);
+                    meteors.AddRange(Meteor.BreakMeteor(meteor1));
+
+                    explosions.Add(new Explosion()
+                    {
+                        Position = player.Position,
+                        Scale = meteor1.ExplosionScale
+                    });
+
+                    explosionSound.Play(0.7f, 0f, 0f);
+
+                    if (lives <= 0)
+                    {
+                        Exit(); // or GameOver screen
+                    }
+                    else
+                    {
+                        invulnerable = true;
+                        invulnerableTimer = InvulnerableTime;
+                    }
+                }
+            }
+
+
             shots.RemoveAll(s => s.IsDead || !Globals.GameArea.Contains(s.Position));
             explosions.RemoveAll(e => e.IsDead);
 
@@ -143,6 +187,8 @@ namespace asteroider
 
             base.Update(gameTime);
         }
+
+
 
         protected override void Draw(GameTime gameTime)
         {
